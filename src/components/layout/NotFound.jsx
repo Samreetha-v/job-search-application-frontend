@@ -2,19 +2,36 @@ import { Link } from "react-router-dom";
 
 const NotFound = () => {
   return (
-    <div style={{ padding: "30px", textAlign: "center" }}>
-      <h1>404</h1>
-      <p style={{ marginTop: "8px" }}>Page not found.</p>
-      <Link
-        to="/"
+    <div
+      className="section-container"
+      style={{
+        textAlign: "center",
+        padding: "60px 20px",
+        marginTop: "40px",
+        maxWidth: "600px",
+        margin: "40px auto",
+      }}
+    >
+      <h1
         style={{
-          display: "inline-block",
-          marginTop: "16px",
-          color: "#222",
-          fontWeight: "600",
+          fontSize: "5rem",
+          color: "var(--danger)",
+          marginBottom: "10px",
         }}
       >
-        Go Home
+        404
+      </h1>
+      <p
+        style={{
+          fontSize: "1.2rem",
+          color: "var(--text-muted)",
+          marginBottom: "30px",
+        }}
+      >
+        Oops! The page you are looking for doesn't exist.
+      </p>
+      <Link to="/" className="btn-primary">
+        Return Home
       </Link>
     </div>
   );

@@ -1,24 +1,23 @@
 // src/components/jobs/PostJob.jsx
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { useSelector } from "react-redux";
 import { createJob } from "../../services/jobService";
 
 const PostJob = () => {
   const navigate = useNavigate();
-  // Get the logged-in user from Redux so we can attach their ID to the job
-  const { user } = useSelector((state) => state.auth);
 
   const [formData, setFormData] = useState({
     title: "",
     company: "",
     location: "",
-    salary: "",
-    type: "Full-Time",
+    salary: "", // Will parse to Double before sending
+    skills: "", // Matches String skills in Java
+    experience: "", // Matches Integer experience in Java
     description: "",
   });
 
-  const { title, company, location, salary, type, description } = formData;
+  const { title, company, location, salary, skills, experience, description } =
+    formData;
 
   const onChange = (e) =>
     setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -26,20 +25,27 @@ const PostJob = () => {
   const onSubmit = async (e) => {
     e.preventDefault();
     try {
-      // 1. Combine the form data with the recruiter's ID
+      // Format the data payload to perfectly match your Job.java types
       const jobPayload = {
-        ...formData,
-        recruiterId: user.id, // CRITICAL: Links the job to this specific recruiter
+        title,
+        company,
+        location,
+        description,
+        skills, // Sent as a plain text string (e.g. "Java, Spring Boot")
+        experience: parseInt(experience, 10), // Converts React string to Java Integer
+        salary: parseFloat(salary), // Converts React string to Java Double
       };
 
-      // 2. Send it to Spring Boot
+      // Send to Spring Boot (RecruiterController handles the Principal recruiterId mapping!)
       await createJob(jobPayload);
 
       alert("Job posted successfully!");
-      navigate("/dashboard"); // Redirect back to dashboard to see the new job
+      navigate("/dashboard");
     } catch (err) {
       console.error("Error posting job:", err);
-      alert("Failed to post job. Please try again.");
+      alert(
+        "Failed to post job. Check browser console for parsing mismatch details.",
+      );
     }
   };
 
@@ -85,25 +91,35 @@ const PostJob = () => {
           />
 
           <input
-            type="text"
-            placeholder="Salary Range (e.g. ₹8,000,000 - ₹12,000,000)"
+            type="number"
+            step="0.01"
+            placeholder="Salary (e.g. 850000.00)"
             name="salary"
             value={salary}
             onChange={onChange}
+            required
             style={inputStyle}
           />
 
-          <select
-            name="type"
-            value={type}
+          <input
+            type="text"
+            placeholder="Required Skills (e.g. Java, SQL, React)"
+            name="skills"
+            value={skills}
             onChange={onChange}
+            required
             style={inputStyle}
-          >
-            <option value="Full-Time">Full-Time</option>
-            <option value="Part-Time">Part-Time</option>
-            <option value="Contract">Contract</option>
-            <option value="Internship">Internship</option>
-          </select>
+          />
+
+          <input
+            type="number"
+            placeholder="Maximum Experience Required (Years)"
+            name="experience"
+            value={experience}
+            onChange={onChange}
+            required
+            style={inputStyle}
+          />
 
           <textarea
             placeholder="Job Description & Requirements..."
@@ -128,7 +144,6 @@ const PostJob = () => {
   );
 };
 
-// A quick reusable style object for the form inputs
 const inputStyle = {
   padding: "10px",
   borderRadius: "5px",

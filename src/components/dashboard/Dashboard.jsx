@@ -1,8 +1,16 @@
-// src/components/dashboard/Dashboard.jsx
 import { useEffect, useState } from "react";
 import { useSelector } from "react-redux";
 import { Link } from "react-router-dom";
-import { getJobsByRecruiter } from "../../services/jobService";
+import {
+  getJobsByRecruiter,
+  getAllJobs,
+  searchJobs,
+  updateJobDetails,
+  deleteJobListing,
+  filterJobsByLocation, 
+  filterJobsBySkills, 
+  filterJobsByExperience, 
+} from "../../services/jobService";
 import { getUserApplications } from "../../services/applicationService";
 
 const Dashboard = () => {
@@ -19,42 +27,102 @@ const Dashboard = () => {
     <div className="dashboard-container">
       <h1>Dashboard</h1>
       <p className="dashboard-welcome">
-        Welcome back, <strong>{user.name}</strong>
+        Welcome back, <strong>{user.name || user.email}</strong>
       </p>
 
-      {/* Pass the user object down so the child components know who is querying the database */}
+      {/* FIX: Explicitly passing user prop to both dashboard variants */}
       {isRecruiter ? (
         <RecruiterDashboard user={user} />
       ) : (
-        <JobSeekerDashboard />
+        <JobSeekerDashboard user={user} />
       )}
     </div>
   );
 };
-
 // ==========================================
-// RECRUITER VIEW (Now with Real Data Fetching)
+// RECRUITER VIEW (With Inline Edit & Delete)
 // ==========================================
-const RecruiterDashboard = ({ user }) => {
+const RecruiterDashboard = () => {
+  const { user } = useSelector((state) => state.auth);
   const [myJobs, setMyJobs] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    // Fetch jobs specific to this logged-in recruiter
-    const fetchMyJobs = async () => {
-      try {
-        // Assuming your user object has an 'id' from the database
-        const data = await getJobsByRecruiter(user.id);
-        setMyJobs(data);
-      } catch (err) {
-        console.error("Error fetching jobs:", err);
-      } finally {
-        setLoading(false);
-      }
-    };
+  // States to track which job is being edited and its form data
+  const [editingJobId, setEditingJobId] = useState(null);
+  const [editFormData, setEditFormData] = useState({
+    title: "",
+    company: "",
+    location: "",
+    description: "",
+    salary: "",
+    type: "Full-Time",
+  });
 
-    fetchMyJobs();
-  }, [user.id]);
+  const fetchMyJobs = async () => {
+    try {
+      const data = await getJobsByRecruiter();
+      setMyJobs(data);
+    } catch (err) {
+      console.error("Error fetching jobs:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (user && user.id) {
+      fetchMyJobs();
+    }
+  }, [user]);
+
+  // Triggered when clicking "Edit" to populate the inline form fields
+  const startEditing = (job) => {
+    setEditingJobId(job.id);
+    setEditFormData({
+      title: job.title || "",
+      company: job.company || "",
+      location: job.location || "",
+      description: job.description || "",
+      salary: job.salary || "",
+      type: job.type || "Full-Time",
+    });
+  };
+
+  const handleEditChange = (e) => {
+    setEditFormData({ ...editFormData, [e.target.name]: e.target.value });
+  };
+
+  // Submits the updated job data to the PUT endpoint
+  const handleUpdateSubmit = async (e, jobId) => {
+    e.preventDefault();
+    try {
+      await updateJobDetails(jobId, editFormData);
+      alert("Job updated successfully!");
+      setEditingJobId(null); // Close the edit mode
+      fetchMyJobs(); // Refresh the list
+    } catch (err) {
+      console.error("Failed to update job:", err);
+      alert("Error updating job. Please try again.");
+    }
+  };
+
+  // Submits the deletion request to the DELETE endpoint
+  const handleDelete = async (jobId) => {
+    if (
+      window.confirm(
+        "Are you sure you want to permanently delete this job listing?",
+      )
+    ) {
+      try {
+        await deleteJobListing(jobId);
+        alert("Job deleted successfully!");
+        fetchMyJobs(); // Refresh the list
+      } catch (err) {
+        console.error("Failed to delete job:", err);
+        alert("Error deleting job.");
+      }
+    }
+  };
 
   return (
     <div style={{ marginTop: "30px" }}>
@@ -75,15 +143,142 @@ const RecruiterDashboard = ({ user }) => {
           </p>
         ) : (
           <div>
-            {/* Map through the real data from Spring Boot */}
             {myJobs.map((job) => (
-              <div key={job.id} className="list-item">
-                <h3 style={{ color: "#333", marginBottom: "5px" }}>
-                  {job.title}
-                </h3>
-                <p style={{ color: "#666" }}>
-                  {job.location} • {job.type || "Full-Time"}
-                </p>
+              <div
+                key={job.id}
+                className="list-item"
+                style={{
+                  borderBottom: "1px solid #eee",
+                  padding: "15px 0",
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: "10px",
+                }}
+              >
+                {/* CONDITIONAL RENDERING: Show the edit form if this job's ID matches the active edit ID */}
+                {editingJobId === job.id ? (
+                  <form
+                    onSubmit={(e) => handleUpdateSubmit(e, job.id)}
+                    style={{
+                      display: "flex",
+                      flexDirection: "column",
+                      gap: "10px",
+                    }}
+                  >
+                    <input
+                      type="text"
+                      name="title"
+                      value={editFormData.title}
+                      onChange={handleEditChange}
+                      required
+                    />
+                    <input
+                      type="text"
+                      name="company"
+                      value={editFormData.company}
+                      onChange={handleEditChange}
+                      required
+                    />
+                    <input
+                      type="text"
+                      name="location"
+                      value={editFormData.location}
+                      onChange={handleEditChange}
+                      required
+                    />
+                    <input
+                      type="text"
+                      name="salary"
+                      value={editFormData.salary}
+                      onChange={handleEditChange}
+                      placeholder="Salary Range"
+                    />
+                    <select
+                      name="type"
+                      value={editFormData.type}
+                      onChange={handleEditChange}
+                    >
+                      <option value="Full-Time">Full-Time</option>
+                      <option value="Part-Time">Part-Time</option>
+                      <option value="Contract">Contract</option>
+                      <option value="Internship">Internship</option>
+                    </select>
+                    <textarea
+                      name="description"
+                      value={editFormData.description}
+                      onChange={handleEditChange}
+                      required
+                      rows="4"
+                    />
+                    <div style={{ display: "flex", gap: "10px" }}>
+                      <button
+                        type="submit"
+                        className="btn-primary"
+                        style={{ background: "#28a745" }}
+                      >
+                        Save Changes
+                      </button>
+                      <button
+                        type="button"
+                        className="btn-primary"
+                        style={{ background: "#6c757d" }}
+                        onClick={() => setEditingJobId(null)}
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </form>
+                ) : (
+                  /* REGULAR VIEW: Displays the job info and action control buttons */
+                  <div
+                    style={{
+                      display: "flex",
+                      justifyContent: "space-between",
+                      alignItems: "center",
+                    }}
+                  >
+                    <div>
+                      <h3 style={{ color: "#333", margin: "0 0 5px 0" }}>
+                        {job.title}
+                      </h3>
+                      <p style={{ color: "#666", margin: 0 }}>
+                        {job.company} • {job.location} •{" "}
+                        {job.type || "Full-Time"} •{" "}
+                        {job.salary || "Salary Undisclosed"}
+                      </p>
+                    </div>
+
+                    <div
+                      style={{
+                        display: "flex",
+                        gap: "10px",
+                        alignItems: "center",
+                      }}
+                    >
+                      <Link
+                        to={`/recruiter/jobs/${job.id}/applicants`}
+                        className="btn-primary"
+                        style={{ background: "#007bff" }}
+                      >
+                        View Applicants
+                      </Link>
+                      <button
+                        onClick={() => startEditing(job)}
+                        className="btn-primary"
+                        style={{ background: "#ffc107", color: "#000" }}
+                      >
+                        Edit
+                      </button>
+                      <button
+                        onClick={() => handleDelete(job.id)}
+                        className="btn-primary"
+                        style={{ background: "#dc3545" }}
+                      >
+                        Delete
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
             ))}
           </div>
@@ -94,71 +289,268 @@ const RecruiterDashboard = ({ user }) => {
 };
 
 // ==========================================
-// JOBSEEKER VIEW (Cleaned up with CSS)
+// JOBSEEKER VIEW (With Advanced Database Filtering)
 // ==========================================
 const JobSeekerDashboard = ({ user }) => {
   const [applications, setApplications] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [availableJobs, setAvailableJobs] = useState([]);
+  const [searchQuery, setSearchQuery] = useState("");
+
+  // Advanced Filter States
+  const [locationFilter, setLocationFilter] = useState("");
+  const [skillsFilter, setSkillsFilter] = useState("");
+  const [expFilter, setExpFilter] = useState("");
+
+  const [loadingApps, setLoadingApps] = useState(true);
+  const [loadingJobs, setLoadingJobs] = useState(true);
+
+  // Initial Data Fetching
+  const fetchInitialData = async () => {
+    setLoadingJobs(true);
+    try {
+      const appData = await getUserApplications();
+      setApplications(appData);
+
+      const jobsData = await getAllJobs();
+      setAvailableJobs(jobsData);
+    } catch (err) {
+      console.error("Error fetching dashboard data:", err);
+    } finally {
+      setLoadingApps(false);
+      setLoadingJobs(false);
+    }
+  };
 
   useEffect(() => {
-    const fetchApplications = async () => {
-      try {
-        const data = await getUserApplications(user.id);
-        setApplications(data);
-      } catch (err) {
-        console.error("Error fetching applications:", err);
-      } finally {
-        setLoading(false);
-      }
-    };
-
     if (user && user.id) {
-      fetchApplications();
+      fetchInitialData();
     }
   }, [user]);
 
+  // Handle Backend Filter Requests
+  const handleBackendFilter = async (filterType) => {
+    setLoadingJobs(true);
+    try {
+      let data = [];
+      if (filterType === "location" && locationFilter.trim()) {
+        data = await filterJobsByLocation(locationFilter);
+        setSkillsFilter("");
+        setExpFilter("");
+      } else if (filterType === "skills" && skillsFilter.trim()) {
+        data = await filterJobsBySkills(skillsFilter);
+        setLocationFilter("");
+        setExpFilter("");
+      } else if (filterType === "experience" && expFilter.trim()) {
+        data = await filterJobsByExperience(Number(expFilter));
+        setLocationFilter("");
+        setSkillsFilter("");
+      } else {
+        data = await getAllJobs(); // Reset
+      }
+      setAvailableJobs(data);
+    } catch (err) {
+      console.error("Filtering failed:", err);
+    } finally {
+      setLoadingJobs(false);
+    }
+  };
+
+  const handleResetFilters = () => {
+    setLocationFilter("");
+    setSkillsFilter("");
+    setExpFilter("");
+    setSearchQuery("");
+    fetchInitialData();
+  };
+
+  // Standard Frontend Search bar fallback
+  const filteredJobs = availableJobs.filter((job) => {
+    const query = searchQuery.toLowerCase();
+    return (
+      (job.title && job.title.toLowerCase().includes(query)) ||
+      (job.company && job.company.toLowerCase().includes(query)) ||
+      (job.location && job.location.toLowerCase().includes(query))
+    );
+  });
+
   return (
     <>
-      <div className="stats-grid">
-        <div className="card">
-          <h3>Applied Jobs</h3>
-          {/* Dynamically count the applications array */}
-          <h1>{loading ? "..." : applications.length}</h1>
-        </div>
-        <div className="card">
-          <h3>Saved Jobs</h3>
-          <h1>0</h1>{" "}
-          {/* You can make this dynamic later when you build the Saved Jobs feature */}
-        </div>
-        <div className="card">
-          <h3>Profile Completion</h3>
-          <h1>80%</h1>{" "}
-          {/* This can be calculated based on how many user fields are filled out later */}
+      {/* Metrics Board - Cleaned up to only show real DB data */}
+      <div className="stats-grid" style={{ display: "flex", gap: "20px", marginTop: "20px" }}>
+        <div className="card" style={{ flex: 1, padding: "20px", background: "#f8f9fa", borderRadius: "8px", border: "1px solid #ddd" }}>
+          <h3 style={{ margin: "0 0 10px 0", color: "#555" }}>Total Applications Submitted</h3>
+          <h1 style={{ margin: 0, color: "#007bff", fontSize: "2.5rem" }}>
+            {loadingApps ? "..." : applications.length}
+          </h1>
         </div>
       </div>
 
-      <div className="section-container">
-        <h2>Recent Applications</h2>
+      {/* Advanced Filter Toolbox */}
+      <div className="section-container" style={{ marginTop: "40px" }}>
+        <h2>Advanced Job Filters</h2>
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
+            gap: "15px",
+            marginTop: "15px",
+          }}
+        >
+          {/* Location Filter Input */}
+          <div>
+            <label style={{ fontSize: "14px", color: "#555" }}>
+              Filter by Location
+            </label>
+            <div style={{ display: "flex", gap: "5px", marginTop: "5px" }}>
+              <input
+                type="text"
+                placeholder="e.g. Chennai"
+                value={locationFilter}
+                onChange={(e) => setLocationFilter(e.target.value)}
+                style={filterInputStyle}
+              />
+              <button
+                onClick={() => handleBackendFilter("location")}
+                className="btn-primary"
+                style={filterBtnStyle}
+              >
+                Go
+              </button>
+            </div>
+          </div>
 
+          {/* Skills Filter Input */}
+          <div>
+            <label style={{ fontSize: "14px", color: "#555" }}>
+              Filter by Skills
+            </label>
+            <div style={{ display: "flex", gap: "5px", marginTop: "5px" }}>
+              <input
+                type="text"
+                placeholder="e.g. Java"
+                value={skillsFilter}
+                onChange={(e) => setSkillsFilter(e.target.value)}
+                style={filterInputStyle}
+              />
+              <button
+                onClick={() => handleBackendFilter("skills")}
+                className="btn-primary"
+                style={filterBtnStyle}
+              >
+                Go
+              </button>
+            </div>
+          </div>
+
+          {/* Experience Filter Input */}
+          <div>
+            <label style={{ fontSize: "14px", color: "#555" }}>
+              Max Experience (Years)
+            </label>
+            <div style={{ display: "flex", gap: "5px", marginTop: "5px" }}>
+              <input
+                type="number"
+                placeholder="e.g. 3"
+                value={expFilter}
+                onChange={(e) => setExpFilter(e.target.value)}
+                style={filterInputStyle}
+              />
+              <button
+                onClick={() => handleBackendFilter("experience")}
+                className="btn-primary"
+                style={filterBtnStyle}
+              >
+                Go
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {(locationFilter || skillsFilter || expFilter || searchQuery) && (
+          <button
+            onClick={handleResetFilters}
+            className="btn-primary"
+            style={{ marginTop: "15px", background: "#6c757d" }}
+          >
+            Clear All Filters
+          </button>
+        )}
+      </div>
+
+      {/* Job Feed List */}
+      <div className="section-container" style={{ marginTop: "30px" }}>
+        <h2>Explore Matching Jobs</h2>
+        <input
+          type="text"
+          placeholder="Keyword search across current results..."
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          style={{
+            width: "100%",
+            padding: "12px",
+            marginTop: "15px",
+            marginBottom: "20px",
+            borderRadius: "5px",
+            border: "1px solid #ccc",
+          }}
+        />
+
+        <div style={{ maxHeight: "350px", overflowY: "auto" }}>
+          {loadingJobs ? (
+            <p>Processing query filter records...</p>
+          ) : filteredJobs.length === 0 ? (
+            <p>No jobs found matching your criteria.</p>
+          ) : (
+            filteredJobs.map((job) => (
+              <div
+                key={job.id}
+                className="list-item"
+                style={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                }}
+              >
+                <div>
+                  <h3 style={{ color: "#333", marginBottom: "5px" }}>
+                    {job.title}
+                  </h3>
+                  <p style={{ color: "#666" }}>
+                    {job.company} • {job.location} •{" "}
+                    {job.salary || "Salary Undisclosed"}
+                  </p>
+                </div>
+                <Link
+                  to={`/jobs/${job.id}`}
+                  className="btn-primary"
+                  style={{ fontSize: "14px" }}
+                >
+                  View Details
+                </Link>
+              </div>
+            ))
+          )}
+        </div>
+      </div>
+
+      {/* Track Applications */}
+      <div className="section-container" style={{ marginTop: "40px" }}>
+        <h2>Recent Applications</h2>
         <div style={{ marginTop: "20px" }}>
-          {loading ? (
+          {loadingApps ? (
             <p>Loading your applications...</p>
           ) : applications.length === 0 ? (
-            <p>
-              You haven't applied to any jobs yet. Head over to the Jobs page to
-              get started!
-            </p>
+            <p>You haven't applied to any positions yet.</p>
           ) : (
             <div>
-              {/* Map through the real application data from Spring Boot */}
               {applications.map((app) => (
                 <div key={app.id} className="list-item">
                   <h3 style={{ color: "#333", marginBottom: "5px" }}>
-                    {app.job.title}{" "}
-                    {/* Assumes your backend returns the joined Job object */}
+                    {app.job?.title || `Job ID: ${app.jobId}`}
                   </h3>
                   <p style={{ color: "#666", textTransform: "capitalize" }}>
-                    {app.job.company} • Status: <strong>{app.status}</strong>
+                    {app.job?.company || "Company Listing"} • Status:{" "}
+                    <strong>{app.status || "APPLIED"}</strong>
                   </p>
                 </div>
               ))}
@@ -169,4 +561,19 @@ const JobSeekerDashboard = ({ user }) => {
     </>
   );
 };
+
+// Simple reusable input styles
+const filterInputStyle = {
+  padding: "8px",
+  borderRadius: "4px",
+  border: "1px solid #ccc",
+  width: "100%",
+  boxSizing: "border-box",
+};
+
+const filterBtnStyle = {
+  padding: "8px 12px",
+  fontSize: "14px",
+};
+
 export default Dashboard;

@@ -1,56 +1,77 @@
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { useSelector, useDispatch } from "react-redux";
-
 import { logout } from "../../actions/auth";
 
 const Navbar = () => {
   const dispatch = useDispatch();
-
+  const navigate = useNavigate();
   const auth = useSelector((state) => state.auth);
+  const { isAuthenticated, user } = auth;
 
   const onLogout = () => {
     dispatch(logout());
+    navigate("/login");
   };
 
+  // 1. Links to show to everyone (Unauthenticated guests)
+  const guestLinks = (
+    <>
+      <Link to="/jobs" className="nav-item">
+        Explore Jobs
+      </Link>
+      <Link to="/login" className="nav-item">
+        Login
+      </Link>
+      <Link to="/register" className="btn-primary">
+        Register
+      </Link>
+    </>
+  );
+
+  // 2. Links to show to candidates (ROLE_JOBSEEKER)
+  const candidateLinks = (
+    <>
+      <Link to="/jobs" className="nav-item">
+        Browse Jobs
+      </Link>
+      <Link to="/dashboard" className="nav-item">
+        Dashboard
+      </Link>
+      <button onClick={onLogout} className="btn-secondary">
+        Logout
+      </button>
+    </>
+  );
+
+  // 3. Links to show to recruiters (ROLE_RECRUITER)
+  const recruiterLinks = (
+    <>
+      <Link to="/dashboard" className="nav-item">
+        Dashboard
+      </Link>
+      <Link to="/post-job" className="nav-item highlight-link">
+        + Post a Job
+      </Link>
+      <button onClick={onLogout} className="btn-secondary">
+        Logout
+      </button>
+    </>
+  );
+
   return (
-    <nav
-      style={{
-        padding: "15px 30px",
-        display: "flex",
-        justifyContent: "space-between",
-        background: "#222",
-      }}
-    >
-      <h2 style={{ color: "#fff" }}>Job Portal</h2>
-
-      <div style={{ display: "flex", gap: "20px" }}>
-        <Link to="/" style={{ color: "#fff" }}>
-          Home
+    <nav className="navbar">
+      <div className="nav-container">
+        <Link to="/" className="nav-logo">
+          Job<span>Portal</span>
         </Link>
 
-        <Link to="/jobs" style={{ color: "#fff" }}>
-          Jobs
-        </Link>
-
-        {auth.token ? (
-          <>
-            <Link to="/dashboard" style={{ color: "#fff" }}>
-              Dashboard
-            </Link>
-
-            <button onClick={onLogout}>Logout</button>
-          </>
-        ) : (
-          <>
-            <Link to="/login" style={{ color: "#fff" }}>
-              Login
-            </Link>
-
-            <Link to="/register" style={{ color: "#fff" }}>
-              Register
-            </Link>
-          </>
-        )}
+        <div className="nav-links">
+          {!isAuthenticated
+            ? guestLinks
+            : user?.role === "ROLE_RECRUITER"
+              ? recruiterLinks
+              : candidateLinks}
+        </div>
       </div>
     </nav>
   );

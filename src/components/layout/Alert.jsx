@@ -3,22 +3,11 @@ const Alert = ({ message, type = "info" }) => {
     return null;
   }
 
-  const background = type === "error" ? "#ffebee" : "#e3f2fd";
-  const border = type === "error" ? "#ef9a9a" : "#90caf9";
+  // Maps your component prop to the global CSS classes
+  const alertClass =
+    type === "error" ? "alert alert-danger" : "alert alert-success";
 
-  return (
-    <div
-      style={{
-        padding: "12px 16px",
-        background,
-        border: `1px solid ${border}`,
-        borderRadius: "6px",
-        marginBottom: "16px",
-      }}
-    >
-      {message}
-    </div>
-  );
+  return <div className={alertClass}>{message}</div>;
 };
 
 export default Alert;

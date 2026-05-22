@@ -6,7 +6,7 @@ import { register } from "../../actions/auth";
 const Register = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
-  // 1. Added 'role' to the initial state (defaulting to CANDIDATE)
+
   const [formData, setFormData] = useState({
     name: "",
     email: "",
@@ -14,7 +14,6 @@ const Register = () => {
     role: "ROLE_JOBSEEKER",
   });
 
-  // 2. Destructure 'role' so we can use it in the form
   const { name, email, password, role } = formData;
 
   const onChange = (e) =>
@@ -29,55 +28,74 @@ const Register = () => {
   };
 
   return (
-    <div style={{ padding: "30px" }}>
-      <h2>Register</h2>
-
-      <form
-        onSubmit={onSubmit}
+    <div className="form-container">
+      <h2 style={{ textAlign: "center", marginBottom: "10px" }}>
+        Create an Account
+      </h2>
+      <p
         style={{
-          display: "flex",
-          flexDirection: "column",
-          width: "300px",
-          gap: "15px",
-          marginTop: "20px",
+          textAlign: "center",
+          color: "var(--text-muted)",
+          marginBottom: "30px",
         }}
       >
-        <input
-          type="text"
-          placeholder="Name"
-          name="name"
-          value={name}
-          onChange={onChange}
-        />
+        Join us and find your next opportunity
+      </p>
 
-        <input
-          type="email"
-          placeholder="Email"
-          name="email"
-          value={email}
-          onChange={onChange}
-        />
+      <form onSubmit={onSubmit}>
+        <div className="form-group">
+          <label>Full Name</label>
+          <input
+            type="text"
+            placeholder="John Doe"
+            name="name"
+            value={name}
+            onChange={onChange}
+            required
+          />
+        </div>
 
-        <input
-          type="password"
-          placeholder="Password"
-          name="password"
-          value={password}
-          onChange={onChange}
-        />
+        <div className="form-group">
+          <label>Email Address</label>
+          <input
+            type="email"
+            placeholder="johndoe@example.com"
+            name="email"
+            value={email}
+            onChange={onChange}
+            required
+          />
+        </div>
 
-        {/* 3. Added a dropdown for the Role */}
-        <select
-          name="role"
-          value={role}
-          onChange={onChange}
-          style={{ padding: "5px" }}
+        <div className="form-group">
+          <label>Password</label>
+          <input
+            type="password"
+            placeholder="Create a secure password"
+            name="password"
+            value={password}
+            onChange={onChange}
+            required
+          />
+        </div>
+
+        <div className="form-group">
+          <label>Account Type</label>
+          <select name="role" value={role} onChange={onChange}>
+            <option value="ROLE_JOBSEEKER">Candidate (Looking for jobs)</option>
+            <option value="ROLE_RECRUITER">
+              Employer / Recruiter (Posting jobs)
+            </option>
+          </select>
+        </div>
+
+        <button
+          type="submit"
+          className="btn-primary"
+          style={{ width: "100%", marginTop: "10px", padding: "12px" }}
         >
-          <option value="ROLE_JOBSEEKER">Candidate</option>
-          <option value="ROLE_RECRUITER">Employer / Recruiter</option>
-        </select>
-
-        <button type="submit">Register</button>
+          Register
+        </button>
       </form>
     </div>
   );
