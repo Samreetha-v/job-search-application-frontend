@@ -97,7 +97,7 @@ const JobApplicants = () => {
                 <tr
                   style={{ borderBottom: "2px solid #ddd", textAlign: "left" }}
                 >
-                  <th style={tableHeaderStyle}>Candidate Email</th>
+                  <th style={tableHeaderStyle}>Candidate Name</th>
                   <th style={tableHeaderStyle}>Applied Date</th>
                   <th style={tableHeaderStyle}>Resume</th>
                   <th style={tableHeaderStyle}>Current Status</th>
@@ -109,8 +109,12 @@ const JobApplicants = () => {
                   <tr key={app.id} style={{ borderBottom: "1px solid #eee" }}>
                     {/* Adjust if your Application entity joins the User object differently */}
                     <td style={tableDataStyle}>
-                      {app.candidateEmail || `Candidate #${app.candidateId}`}
+                      <strong>{app.candidate?.name || "Unknown"}</strong>
+                      <div style={{ fontSize: "12px", color: "#666" }}>
+                        {app.candidate?.email || ""}
+                      </div>
                     </td>
+
                     <td style={tableDataStyle}>
                       {app.appliedAt
                         ? new Date(app.appliedAt).toLocaleDateString()
