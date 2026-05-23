@@ -125,6 +125,7 @@ const PostJob = () => {
             placeholder="Job Description & Requirements..."
             name="description"
             value={description}
+            maxLength={1000}
             onChange={onChange}
             required
             rows="6"
